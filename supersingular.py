@@ -49,11 +49,11 @@ class Graph(Mobject):
 
     def edge(self, start, end, **kwargs):
         if (start == end):
-            return CubicBezier([
+            return CubicBezier(
                 self._scale*self.layout[end],
                 self._scale*self.layout[end] + [1,1,1],
                 self._scale*self.layout[end] + [-1,1,-1],
-                self._scale*self.layout[end]], **kwargs)
+                self._scale*self.layout[end], **kwargs)
         else:
             return Line(self._scale*self.layout[start],
                         self._scale*self.layout[end],
