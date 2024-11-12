@@ -50,6 +50,8 @@ def neighbours(j, l, extend=False):
 
 # Some nice primes
 
-# p = 3*2^7 - 1
+p = 3*2^7 - 1
+
+supersingular_ell_isogeny_graph(2, p).show()
 
 # p = 127
