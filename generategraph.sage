@@ -1,3 +1,4 @@
+import networkx as nx
 # A new script to generate SS isogeny graphs
 # Because I couldn't find existing methods that correctly keep track of edge multiplicity and cycles nicely.
 # Author: Shai Levin (2024)
@@ -52,6 +53,11 @@ def neighbours(j, l, extend=False):
 
 p = 3*2^7 - 1
 
-supersingular_ell_isogeny_graph(2, p).show()
+G = supersingular_ell_isogeny_graph(2, p)
 
-# p = 127
+print([[str(x),str(y)] for (x,y,z) in G.edges()])
+
+H = G.networkx_graph()
+nx.write_adjlist(H, "adjlist.txt", delimiter=',')
+adj_list = nx.read_adjlist("adjlist.txt", delimiter=',')
+print(list(adj_list))

@@ -18,7 +18,7 @@ class LabeledDot(Dot):
         rendered_label.move_to(self.get_center())
         self.add(rendered_label)
 
-class Tree(Mobject):
+class Tree(VMobject):
     def __init__(self, l, max_depth=7, **kwargs):
         super().__init__(**kwargs)
         self.l = l
@@ -121,6 +121,7 @@ class Tree(Mobject):
                                       label_color=BLUE,
                                       frame_fill_color=WHITE,
                                       label_frame = True,
+                                      label_position=0.6,
                                       start=arrow_start, 
                                       end=arrow_end,
                                       color=BLUE, stroke_width=self.line_width/(1.5**depth)).set_z_index(1))
@@ -140,13 +141,13 @@ class WalkInTree(MovingCameraScene):
     def construct(self):
         l = 2
         tree = Tree(l,max_depth=9)
-        self.add(tree)
-        path = tree.path([1,0,0])
+        self.play(Create(tree, run_time=3))
+        path = tree.path([1])
         original_width = self.camera.frame.width.copy()
         for arrow in path:
             self.play(self.camera.frame.animate.move_to(arrow).set(width=self.camera.frame.width*0.8))
-            self.play(Create(arrow))
-            self.wait(1)
+            self.play(Create(arrow, run_time=3))
+            self.wait(2)
         self.play(self.camera.frame.animate.move_to(ORIGIN).set(width=original_width))
 
 
