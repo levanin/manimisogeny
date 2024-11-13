@@ -109,14 +109,12 @@ class Tree(Mobject):
         for depth, step in enumerate(directions):
             step_matrix = self.matrix_from_type(step)
             v_1 = v_0 @ step_matrix
-            # Debug prints
+            
             v_0_pos = self.vertex_positions[self.matrix_to_bytes(v_0)]
             v_1_pos = self.vertex_positions[self.matrix_to_bytes(v_1)]
+
             arrow_start = (1-edge_start)*v_0_pos + edge_start*v_1_pos
             arrow_end = edge_end*v_0_pos + (1-edge_end)*v_1_pos
-            print(arrow_end, arrow_start)
-
-        
 
             lines.append(LabeledLine(self.latex_matrix(step_matrix),
                                       font_size=15/(1.5**depth),
@@ -124,8 +122,8 @@ class Tree(Mobject):
                                       frame_fill_color=WHITE,
                                       label_frame = True,
                                       start=arrow_start, 
-                                      end=arrow_end, 
-                                      color=BLUE, stroke_width=self.line_width/(1.5**depth)).set_z_index(4))
+                                      end=arrow_end,
+                                      color=BLUE, stroke_width=self.line_width/(1.5**depth)).set_z_index(1))
             v_0 = v_1.copy()
         return lines
 
