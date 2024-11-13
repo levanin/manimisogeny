@@ -19,42 +19,93 @@ class LabeledDot(Dot):
         self.add(rendered_label)
 
 class Graph(VMobject):
-    def __init__(self, vertex_color=BLACK, edge_color=BLACK, **kwargs):
+    def __init__(self, vertex_color=BLACK, edge_color=BLACK, dimension=2, **kwargs):
         super().__init__(**kwargs)
         
         self.graph = nx.read_adjlist('adjlist.txt', delimiter=',', create_using=nx.MultiGraph)
-        self.layout = nx.kamada_kawai_layout(self.graph, dim=2,scale=4)
-        self.add_vertices()
-        self.add_edges()
-    def add_vertices(self):
+        self.layout = nx.kamada_kawai_layout(self.graph, dim=dimension,scale=5)
+        self.dimension = dimension
+        self.draw_vertices()
+        self.draw_edges()
+    def draw_vertices(self):
         for n in self.graph.nodes:
             pos = self.get_layout_position(n)
-            self.add(Dot(pos, color=BLACK))
+            self.add(Dot(pos, color=BLACK, radius=1.2*DEFAULT_DOT_RADIUS))
 
     def get_layout_position(self, vertex):
-        return np.array([*self.layout[vertex],0])
+        assert self.dimension in [2, 3]
+        if self.dimension == 2:
+            return np.array([*self.layout[vertex],0])
+        else:
+            return np.array([*self.layout[vertex]])
+    
+    def draw_loop(self, vertex, pos0, multiplicity):
+        if multiplicity > 2:
+            raise NotImplementedError("Drawing more than 2 loops on one vertex is not implemented.")
+        angle_of_loop = 0
+        neighbour_positions = [self.get_layout_position(neighbour) for neighbour in self.graph.neighbors(vertex) if neighbour != vertex]
+        if len(neighbour_positions) > 0:
+            mean_angle = np.mean([np.arctan2(pos[1] - pos0[1], pos[0] - pos0[0]) for pos in neighbour_positions])
+            angle_of_loop = mean_angle + np.pi
+        dvec1 = np.array([np.cos(angle_of_loop + np.pi/4), np.sin(angle_of_loop + np.pi/4), 0])
+        dvec2 = np.array([np.cos(angle_of_loop - np.pi/4), np.sin(angle_of_loop - np.pi/4), 0])
+        if multiplicity == 1:
+            self.add(CubicBezier(pos0, pos0 + 1.5*dvec1, pos0 + 1.5*dvec2, pos0, color=BLACK))
+        else:
+            dvec3 = np.array([np.cos(angle_of_loop + np.pi/5), np.sin(angle_of_loop + np.pi/5), 0])
+            dvec4 = np.array([np.cos(angle_of_loop - np.pi/5), np.sin(angle_of_loop - np.pi/5), 0])
+            self.add(CubicBezier(pos0, pos0 + 1*dvec3, pos0 + 1*dvec4, pos0, color=BLACK))
+            self.add(CubicBezier(pos0, pos0 + 1.6*dvec1, pos0 + 1.6*dvec2, pos0, color=BLACK))
 
-    def add_edges(self):
-        for (start, end, multiplicity) in self.graph.edges:
-            multiplicity += 1
-            print(multiplicity)
+        
+        
+    def draw_multiple_edges(self, pos0, pos1, multiplicity):
+        assert multiplicity > 1
+        if multiplicity > 3:
+            raise NotImplementedError("Drawing more than 3 edges is not implemented.")
+        midpoint = (pos0 + pos1) / 2
+        magnitude = np.linalg.norm(pos1 - pos0)
+        angle = np.arctan2(pos1[1] - pos0[1], pos1[0] - pos0[0])
+        spline1 = midpoint + magnitude/4 * np.array([np.cos(angle + np.pi/2), np.sin(angle + np.pi/2), 0])
+        spline2 = midpoint + magnitude/4 * np.array([np.cos(angle - np.pi/2), np.sin(angle - np.pi/2), 0])
+        self.add(CubicBezier(pos0, spline1, spline1, pos1, color=BLACK))
+        self.add(CubicBezier(pos0, spline2, spline2, pos1, color=BLACK))
+        if multiplicity == 3:
+            self.add(Line(pos0,pos1, color=BLACK))  
+
+    def draw_edges(self):
+        already_drawn = set()
+        for (start, end, multiplicity) in sorted(self.graph.edges, key=lambda x: x[2], reverse=True):
+            multiplicity = multiplicity + 1
+            if (end, start) in already_drawn or (start, end) in already_drawn:
+                continue
+            already_drawn.add((start, end))
+            # For some reason networkx stores multiplicities 1 less than they are
             pos0 = self.get_layout_position(start)
             pos1 = self.get_layout_position(end)
             if start == end:
-                self.add(CubicBezier(pos0, pos0 + [1,1,1], pos1 + [-1,1,-1], pos1, color=BLACK))
+                self.draw_loop(start, pos0, multiplicity)
             elif multiplicity == 1:
                 self.add(Line(pos0, pos1, color=BLACK))
             elif multiplicity > 1:
-                self.add(CubicBezier(
-                    pos0,
-                    pos0 + [1,1,1],
-                    pos1 + [-1,1,-1],
-                    pos1,color=BLACK))
-                self.add(CubicBezier(
-                    pos0 + [0,0,1],
-                    pos0 + [1,1,2],
-                    pos1 + [-1,1,2],
-                    pos1 + [0,0,1],color=BLACK))
+                self.draw_multiple_edges(pos0, pos1, multiplicity)
+
+    def draw_cycle(self):
+        cycles = nx.simple_cycles(self.graph)
+        cycles = sorted(cycles, key=lambda x: len(x), reverse=True)
+        cycle = cycles[-17]
+        drawn_cycle = []
+        print(cycle)
+        for i in range(len(cycle)):
+            v_i = cycle[i]
+            v_i_plus_1 = cycle[(i+1) % len(cycle)]
+            pos0 = self.get_layout_position(v_i)
+            pos1 = self.get_layout_position(v_i_plus_1)
+            drawn_edge = Arrow(color=BLUE, max_tip_length_to_length_ratio=0.1)
+            drawn_edge.put_start_and_end_on(pos0, pos1)
+            drawn_cycle.append(drawn_edge)
+        return drawn_cycle
+
 
 
     # def path(self, directions, edge_start=0, edge_end=0):
@@ -90,9 +141,20 @@ class Graph(VMobject):
     
 class GraphFigure(Scene):
     def construct(self):
-        l = 2
         graph = Graph(adj_list)
         self.add(graph)
+
+class WalkInGraph(MovingCameraScene):
+    def construct(self):
+        graph = Graph(adj_list)
+        self.play(Create(graph), run_time=3)
+        cycle = graph.draw_cycle()
+        original_width = self.camera.frame.width.copy()
+        for edge in cycle:
+            #self.play(self.camera.frame.animate.move_to(edge).set(width=0.8*original_width))
+            self.play(Create(edge), run_time=3)
+            self.wait(1)
+        self.play(self.camera.frame.animate.move_to(ORIGIN).set(width=original_width))
 
 
 
