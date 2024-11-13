@@ -99,8 +99,9 @@ class Tree(Mobject):
             new_angle_of_0 = angle - np.pi - self.relative_angle(self.inverse_type(i))
             new_matrix = matrix @ self.matrix_from_type(i)
             self.construct_level(depth+1, new_pos, new_angle_of_0, i, new_matrix)
-    def path(self, directions):
+    def path(self, directions, edge_start=0, edge_end=0):
         # Input: a list of directions (0, ..., l) which determine a path in the tree from the root
+        # Optionally, edge_start and edge_end can be set to determine what percentage of the edge is cut off for the arrow
         # Output: a path in the graph as a list of lines
         lines = []
         v_0 = np.array([[1,0], [0,1]])
@@ -108,15 +109,24 @@ class Tree(Mobject):
         for depth, step in enumerate(directions):
             step_matrix = self.matrix_from_type(step)
             v_1 = v_0 @ step_matrix
-            lines.append(LabeledArrow(self.latex_matrix(step_matrix),
+            # Debug prints
+            v_0_pos = self.vertex_positions[self.matrix_to_bytes(v_0)]
+            v_1_pos = self.vertex_positions[self.matrix_to_bytes(v_1)]
+            arrow_start = (1-edge_start)*v_0_pos + edge_start*v_1_pos
+            arrow_end = edge_end*v_0_pos + (1-edge_end)*v_1_pos
+            print(arrow_end, arrow_start)
+
+        
+
+            lines.append(LabeledLine(self.latex_matrix(step_matrix),
                                       font_size=15/(1.5**depth),
                                       label_color=BLUE,
                                       frame_fill_color=WHITE,
                                       label_frame = True,
-                                      start=self.vertex_positions[self.matrix_to_bytes(v_0)], 
-                                      end=self.vertex_positions[self.matrix_to_bytes(v_1)], 
+                                      start=arrow_start, 
+                                      end=arrow_end, 
                                       color=BLUE, stroke_width=self.line_width/(1.5**depth)).set_z_index(4))
-            v_0 = v_1
+            v_0 = v_1.copy()
         return lines
 
             
@@ -127,12 +137,13 @@ class TreeScene(Scene):
         tree = Tree(l)
         self.add(tree)
 
+
 class WalkInTree(MovingCameraScene):
     def construct(self):
         l = 2
         tree = Tree(l,max_depth=9)
         self.add(tree)
-        path = tree.path([1,0,0,1])
+        path = tree.path([1,0,0])
         original_width = self.camera.frame.width.copy()
         for arrow in path:
             self.play(self.camera.frame.animate.move_to(arrow).set(width=self.camera.frame.width*0.8))
