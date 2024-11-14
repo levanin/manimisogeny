@@ -90,18 +90,25 @@ class Graph(VMobject):
             elif multiplicity > 1:
                 self.draw_multiple_edges(pos0, pos1, multiplicity)
 
-    def draw_cycle(self):
+    def draw_cycle(self, length,number=0, color=BLUE, starting_vertex=None):
         cycles = nx.simple_cycles(self.graph)
-        cycles = sorted(cycles, key=lambda x: len(x), reverse=True)
-        cycle = cycles[-17]
+        cycles = list(filter(lambda x: len(x) == length, cycles))
+        cycle = cycles[number % len(list(cycles))]
         drawn_cycle = []
+        
+        if starting_vertex is not None and starting_vertex in cycle:
+            starting_index = cycle.index(starting_vertex)
+            cycle = cycle[starting_index:] + cycle[:starting_index]
         print(cycle)
+        if length == 7 and number in [1,4]:
+            # This is a hack for the presentation
+            cycle = cycle[:1] + list(reversed(cycle[1:]))
         for i in range(len(cycle)):
             v_i = cycle[i]
             v_i_plus_1 = cycle[(i+1) % len(cycle)]
             pos0 = self.get_layout_position(v_i)
             pos1 = self.get_layout_position(v_i_plus_1)
-            drawn_edge = Arrow(color=BLUE, max_tip_length_to_length_ratio=0.1)
+            drawn_edge = Arrow(color=color, max_tip_length_to_length_ratio=0.1)
             drawn_edge.put_start_and_end_on(pos0, pos1)
             drawn_cycle.append(drawn_edge)
         return drawn_cycle
@@ -148,16 +155,31 @@ class WalkInGraph(MovingCameraScene):
     def construct(self):
         graph = Graph(adj_list)
         self.play(Create(graph), run_time=3)
-        cycle = graph.draw_cycle()
+        #Good one below
+        cycle1 = graph.draw_cycle(7,4,color=BLUE, starting_vertex='128')
+        cycle2 = graph.draw_cycle(7,1, color=RED, starting_vertex='128')
         original_width = self.camera.frame.width.copy()
-        for edge in cycle:
+        for edge in cycle1:
             #self.play(self.camera.frame.animate.move_to(edge).set(width=0.8*original_width))
+            self.wait(2)
             self.play(Create(edge), run_time=3)
-            self.wait(1)
-        self.play(self.camera.frame.animate.move_to(ORIGIN).set(width=original_width))
+        self.wait(2)
+        for edge in cycle2:
+            self.wait(2)
+            self.play(Create(edge), run_time=3)
+        self.wait(5)
+        #self.play(self.camera.frame.animate.move_to(ORIGIN).set(width=original_width))
 
-
-
+class TestingBench(Scene):
+    def construct(self):
+        graph = Graph(adj_list)
+        self.add(graph)
+        cycle1 = graph.draw_cycle(7,4,color=BLUE, starting_vertex='128')
+        cycle2 = graph.draw_cycle(7,1, color=RED, starting_vertex='128')
+        for edge in cycle1:
+            self.add(edge)
+        for edge in cycle2:
+            self.add(edge)
 
 # To run this script, run the following command:
 # manim -pr PIXELS,PIXELS tree.py TreeScene

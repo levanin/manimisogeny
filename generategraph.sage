@@ -61,3 +61,13 @@ H = G.networkx_graph()
 nx.write_adjlist(H, "adjlist.txt", delimiter=',')
 adj_list = nx.read_adjlist("adjlist.txt", delimiter=',')
 print(list(adj_list))
+
+
+F = GF(p^2)
+E = EllipticCurve(F, j=F(128))
+
+P,Q = E.torsion_basis(2^7)
+
+for b in range(2^7):
+    if E.isogeny(P + b*Q).codomain().j_invariant() == 128:
+        print(b)

@@ -3,23 +3,8 @@ from manim.camera.camera import Camera
 import networkx as nx
 import numpy as np
 
-class LabeledDot(Dot):
-    def __init__(self, label, radius=None, **kwargs) -> None:
-        if isinstance(label, str):
-            rendered_label = MathTex(label, color=BLACK)
-        else:
-            rendered_label = label
-
-        if radius is None:
-            radius = (
-                0.1 + max(rendered_label.get_width(), rendered_label.get_height()) / 2
-            )
-        Dot.__init__(self, radius=radius, **kwargs)
-        rendered_label.move_to(self.get_center())
-        self.add(rendered_label)
-
 class Tree(VMobject):
-    def __init__(self, l, max_depth=10, **kwargs):
+    def __init__(self, l, max_depth=7,thickness_exponent=1.5,length_exponent=2, **kwargs):
         super().__init__(**kwargs)
         self.l = l
         self.max_depth = max_depth
@@ -29,6 +14,9 @@ class Tree(VMobject):
         self.label_scale = 0.7
         self.unlabeled_vertex_scale = 0.2
         self.line_width = 10
+        
+        self.length_exponent = length_exponent
+        self.thickness_exponent = thickness_exponent
 
         self.graph = nx.Graph()
         self.vertex_positions = dict()
@@ -74,7 +62,7 @@ class Tree(VMobject):
                 radius=self.unlabeled_vertex_scale,
                 color=BLACK
             ).move_to(pos).set_z_index(2)
-        node.scale(1 / (1.5**depth))
+        node.scale(1 / (self.thickness_exponent**depth))
         print
         self.add(node)
         hashable_matrix = self.matrix_to_bytes(matrix)
@@ -91,15 +79,15 @@ class Tree(VMobject):
             angle = angle_of_0 + self.relative_angle(i)
             rel_pos = np.array([np.cos(angle), np.sin(angle), 0])
             
-            new_pos = pos + self.line_length * rel_pos / (2**depth)
+            new_pos = pos + self.line_length * rel_pos / (self.length_exponent**depth)
             
-            edge = Line(pos, new_pos, color=BLACK, stroke_width=self.line_width/(1.5**depth)).set_z_index(0)
+            edge = Line(pos, new_pos, color=BLACK, stroke_width=self.line_width/(self.thickness_exponent**depth)).set_z_index(0)
             self.add(edge)
 
             new_angle_of_0 = angle - np.pi - self.relative_angle(self.inverse_type(i))
             new_matrix = matrix @ self.matrix_from_type(i)
             self.construct_level(depth+1, new_pos, new_angle_of_0, i, new_matrix)
-    def path(self, directions, edge_start=0, edge_end=0):
+    def path(self, directions, edge_start=0, edge_end=0, draw_matrices_on_path=False,color=BLUE):
         # Input: a list of directions (0, ..., l) which determine a path in the tree from the root
         # Optionally, edge_start and edge_end can be set to determine what percentage of the edge is cut off for the arrow
         # Output: a path in the graph as a list of lines
@@ -109,22 +97,27 @@ class Tree(VMobject):
         for depth, step in enumerate(directions):
             step_matrix = self.matrix_from_type(step)
             v_1 = v_0 @ step_matrix
+
+            if draw_matrices_on_path:
+                self.add(LabeledDot(self.latex_matrix(v_1), color=WHITE).move_to(self.vertex_positions[self.matrix_to_bytes(v_1)]).scale(self.label_scale/self.thickness_exponent**(depth+1)).set_z_index(2))
             
             v_0_pos = self.vertex_positions[self.matrix_to_bytes(v_0)]
             v_1_pos = self.vertex_positions[self.matrix_to_bytes(v_1)]
 
             arrow_start = (1-edge_start)*v_0_pos + edge_start*v_1_pos
             arrow_end = edge_end*v_0_pos + (1-edge_end)*v_1_pos
-
-            lines.append(LabeledLine(self.latex_matrix(step_matrix),
-                                      font_size=15/(1.5**depth),
-                                      label_color=BLUE,
+            if depth < 3:
+                lines.append(LabeledLine(self.latex_matrix(step_matrix),
+                                      font_size=15/(2**depth),
+                                      label_color=color,
                                       frame_fill_color=WHITE,
                                       label_frame = True,
                                       label_position=0.6,
                                       start=arrow_start, 
                                       end=arrow_end,
-                                      color=BLUE, stroke_width=self.line_width/(1.5**depth)).set_z_index(1))
+                                      color=color, stroke_width=self.line_width/(self.thickness_exponent**depth)).set_z_index(1))
+            else:
+                lines.append(Line(arrow_start, arrow_end, color=color, stroke_width=self.line_width/(self.thickness_exponent**depth)).set_z_index(1))
             v_0 = v_1.copy()
         return lines
 
@@ -133,22 +126,42 @@ class Tree(VMobject):
 class TreeScene(Scene):
     def construct(self):
         l = 2
-        tree = Tree(l)
+        tree = Tree(l, max_depth=10, thickness_exponent=1.5, length_exponent=1.7)
         self.add(tree)
 
+class TestingBench(Scene):
+    def construct(self):
+        l = 2
+        tree = Tree(l, max_depth=12, thickness_exponent=1.5, length_exponent=1.65)
+        self.add(tree)
+        path1 = tree.path([0,1,1,0,0,0,0], draw_matrices_on_path=True, color=BLUE)
+        path2 = tree.path([0,0,0,0,0,0,0], draw_matrices_on_path=True, color=RED)
+        for arrow in path1:
+            self.add(arrow)
+        for arrow in path2:
+            self.add(arrow)
+        
 
 class WalkInTree(MovingCameraScene):
     def construct(self):
         l = 2
-        tree = Tree(l,max_depth=9)
+        tree = Tree(l, max_depth=12, thickness_exponent=1.5, length_exponent=1.65)
+        #self.add(tree)
+        path1 = tree.path([0,1,1,0,0,0,0], draw_matrices_on_path=True, color=BLUE)
+        path2 = tree.path([0,0,0,0,0,0,0], draw_matrices_on_path=True, color=RED)
         self.play(Create(tree, run_time=3))
-        path = tree.path([0,0,1,0,0,1,1])
         original_width = self.camera.frame.width.copy()
-        for arrow in path:
-            self.play(self.camera.frame.animate.move_to(arrow).set(width=self.camera.frame.width*0.8))
-            self.play(Create(arrow, run_time=3))
+        for arrow in path1:
             self.wait(2)
-        self.play(self.camera.frame.animate.move_to(ORIGIN).set(width=original_width))
+            self.play(self.camera.frame.animate.move_to(arrow).set(width=self.camera.frame.width*0.70))
+            self.play(Create(arrow, run_time=3))
+        self.play(self.camera.frame.animate.move_to(ORIGIN).set(width=original_width), run_time=3)
+        self.wait(2)
+        for arrow in path2:
+            self.wait(2)
+            self.play(self.camera.frame.animate.move_to(arrow).set(width=self.camera.frame.width*0.70))
+            self.play(Create(arrow, run_time=3))
+        self.wait(5)
 
 
 
