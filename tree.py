@@ -4,11 +4,11 @@ import networkx as nx
 import numpy as np
 
 class Tree(VMobject):
-    def __init__(self, l, max_depth=7,thickness_exponent=1.5,length_exponent=2, **kwargs):
+    def __init__(self, l, max_depth=7,thickness_exponent=1.5,length_exponent=2, max_matrix_depth=3,**kwargs):
         super().__init__(**kwargs)
         self.l = l
         self.max_depth = max_depth
-        self.max_matrix_depth = 3
+        self.max_matrix_depth = max_matrix_depth
 
         self.line_length = 3
         self.label_scale = 0.7
@@ -126,7 +126,7 @@ class Tree(VMobject):
 class TreeScene(Scene):
     def construct(self):
         l = 2
-        tree = Tree(l, max_depth=10, thickness_exponent=1.5, length_exponent=1.7)
+        tree = Tree(l, max_depth=11, thickness_exponent=1.5, length_exponent=1.7,max_matrix_depth=0)
         self.add(tree)
 
 class TestingBench(Scene):
@@ -161,6 +161,8 @@ class WalkInTree(MovingCameraScene):
             self.wait(2)
             self.play(self.camera.frame.animate.move_to(arrow).set(width=self.camera.frame.width*0.70))
             self.play(Create(arrow, run_time=3))
+        self.wait(2)
+        self.play(self.camera.frame.animate.move_to(ORIGIN).set(width=original_width), run_time=3)
         self.wait(5)
 
 

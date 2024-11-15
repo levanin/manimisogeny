@@ -112,6 +112,19 @@ class Graph(VMobject):
             drawn_edge.put_start_and_end_on(pos0, pos1)
             drawn_cycle.append(drawn_edge)
         return drawn_cycle
+    
+    def draw_path(self, start_vertex, end_vertex, color=BLUE):
+        shortest_path = nx.shortest_path(self.graph, start_vertex, end_vertex)
+
+        drawn_path = []
+        print(shortest_path)
+        for i in range(len(shortest_path)-1):
+            pos0 = self.get_layout_position(shortest_path[i])
+            pos1 = self.get_layout_position(shortest_path[i+1])
+            drawn_edge = Arrow(color=color, max_tip_length_to_length_ratio=0.1)
+            drawn_edge.put_start_and_end_on(pos0, pos1)
+            drawn_path.append(drawn_edge)
+        return drawn_path
 
 
 
@@ -161,13 +174,32 @@ class WalkInGraph(MovingCameraScene):
         original_width = self.camera.frame.width.copy()
         for edge in cycle1:
             #self.play(self.camera.frame.animate.move_to(edge).set(width=0.8*original_width))
-            self.wait(2)
+            self.wait(3)
             self.play(Create(edge), run_time=3)
         self.wait(2)
         for edge in cycle2:
+            self.wait(3)
+            self.play(Create(edge), run_time=3)
+            
+        self.wait(5)
+        #self.play(self.camera.frame.animate.move_to(ORIGIN).set(width=original_width))
+
+class WalkInGraph2(MovingCameraScene):
+    def construct(self):
+        graph = Graph(adj_list)
+        self.play(Create(graph), run_time=3)
+        #Good one below
+        cycle1 = graph.draw_path('128', '196', color=GREEN)
+        E_label = MathTex('E', color=GREEN).next_to(graph.get_layout_position('128'), UP)
+        Ep_label = MathTex('E\'', color=GREEN).next_to(graph.get_layout_position('196'), UP)
+        self.add(E_label)
+        original_width = self.camera.frame.width.copy()
+        for edge in cycle1:
+            #self.play(self.camera.frame.animate.move_to(edge).set(width=0.8*original_width))
             self.wait(2)
             self.play(Create(edge), run_time=3)
-        self.wait(5)
+        self.play(Write(Ep_label))
+        self.wait(2)
         #self.play(self.camera.frame.animate.move_to(ORIGIN).set(width=original_width))
 
 class TestingBench(Scene):
